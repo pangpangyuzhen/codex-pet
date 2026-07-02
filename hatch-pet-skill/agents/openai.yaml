@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hatch Pet"
+  short_description: "Hatch multi-form, cache-safe Codex pets"
+  default_prompt: "Use $hatch-pet to create or repair a Codex-compatible animated pet, including state-aware multi-form transformations when requested."
