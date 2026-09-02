@@ -1,0 +1,65 @@
+name: Build Codex Switch Lite DMG
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-dmg:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore source payload
+        shell: bash
+        run: |
+          cat dmg-build/source.part1 dmg-build/source.part2 dmg-build/source.part3 dmg-build/source.part4 > /tmp/codex-switch-lite.b64
+          base64 --decode /tmp/codex-switch-lite.b64 > /tmp/codex-switch-lite.zip
+          unzip -q /tmp/codex-switch-lite.zip -d "$GITHUB_WORKSPACE/build-src"
+          test -f "$GITHUB_WORKSPACE/build-src/codex-switch-lite/package.json"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.3
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install frontend dependencies
+        working-directory: build-src/codex-switch-lite
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Typecheck
+        working-directory: build-src/codex-switch-lite
+        run: pnpm typecheck
+
+      - name: Build universal macOS DMG
+        working-directory: build-src/codex-switch-lite
+        run: pnpm tauri build --target universal-apple-darwin --bundles dmg
+
+      - name: Find DMG
+        id: dmg
+        shell: bash
+        run: |
+          DMG=$(find build-src/codex-switch-lite/src-tauri/target/universal-apple-darwin/release/bundle/dmg -name '*.dmg' -print -quit)
+          test -n "$DMG"
+          echo "path=$DMG" >> "$GITHUB_OUTPUT"
+          cp "$DMG" "$GITHUB_WORKSPACE/Codex-Switch-Lite-0.1.0-universal.dmg"
+          shasum -a 256 "$GITHUB_WORKSPACE/Codex-Switch-Lite-0.1.0-universal.dmg"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Switch-Lite-DMG
+          path: Codex-Switch-Lite-0.1.0-universal.dmg
+          if-no-files-found: error
+          retention-days: 7
