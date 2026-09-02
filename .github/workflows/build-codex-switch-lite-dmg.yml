@@ -34,6 +34,19 @@ jobs:
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
+      - name: Pin Tauri JS packages to Rust 2.8
+        working-directory: build-src/codex-switch-lite
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+          pkg.dependencies['@tauri-apps/api'] = '2.8.0';
+          pkg.devDependencies['@tauri-apps/cli'] = '2.8.0';
+          fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
       - name: Install frontend dependencies
         working-directory: build-src/codex-switch-lite
         run: pnpm install --no-frozen-lockfile
